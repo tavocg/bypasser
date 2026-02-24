@@ -66,13 +66,7 @@ sudo apt-get install -y wireguard-tools iproute2 iptables curl tar
 Download/update the latest release binary to `/usr/local/bin/bp`:
 
 ```bash
-OS="$(uname -s)"
-ARCH="$(uname -m)"
-ASSET="bp_${OS,,}_${ARCH}"
-URL="https://github.com/tavocg/bypasser/releases/latest/download/${ASSET}.tar.gz"
-
-curl -fsSL "$URL" | sudo tar -xz -C /usr/local/bin --strip-components=1 "${ASSET}/bp"
-sudo chmod 0755 /usr/local/bin/bp
+OS="$(uname -s)"; ARCH="$(uname -m)"; ASSET="bp_${OS,,}_${ARCH}"; curl -fsSL "https://github.com/tavocg/bypasser/releases/latest/download/${ASSET}.tar.gz" | sudo tar -xz -C /usr/local/bin --strip-components=1 "${ASSET}/bp" && sudo chmod 0755 /usr/local/bin/bp
 ```
 
 First-time server setup (creates WireGuard directories and forwarding sysctl file):
