@@ -52,7 +52,7 @@ SYSCTL_CONF_FILE=./.bypasser-test/sysctl.conf \
 ./bp -server
 ```
 
-For VPN/peer creation you also need `wg` and `ip` installed on the machine.
+For VPN/peer creation you need `wg` installed (`wireguard-tools`). `ip` is only used as a fallback on Linux if native interface detection fails.
 
 ## Deploy / Update (Linux Server)
 
