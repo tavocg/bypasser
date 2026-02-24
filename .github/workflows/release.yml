@@ -46,12 +46,10 @@ jobs:
           GOOS="${{ matrix.goos }}"
           GOARCH="${{ matrix.goarch }}"
           RELEASE_ARCH="${GOARCH}"
-          if [ "${GOOS}" = "linux" ]; then
-            case "${GOARCH}" in
-              amd64) RELEASE_ARCH="x86_64" ;;
-              arm64) RELEASE_ARCH="aarch64" ;;
-            esac
-          fi
+          case "${GOARCH}" in
+            amd64) RELEASE_ARCH="x86_64" ;;
+            arm64) RELEASE_ARCH="aarch64" ;;
+          esac
 
           NAME="bp_${GOOS}_${RELEASE_ARCH}"
           STAGE_DIR="stage/${NAME}"
