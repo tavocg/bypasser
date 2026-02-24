@@ -12,6 +12,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 )
 
 type Dependencies struct {
@@ -488,16 +489,19 @@ func (m *Manager) detectDefaultInterface(ctx context.Context) (string, error) {
 	if m.cfg.PublicInterface != "" {
 		return m.cfg.PublicInterface, nil
 	}
+
+	if localIP, err := m.detectOutboundIPv4(ctx); err == nil {
+		if iface, err := m.findInterfaceByIPv4(localIP); err == nil {
+			return iface, nil
+		}
+	}
+
 	if !m.sys.HasCommand("ip") {
-		return "", fmt.Errorf("ip command not found; set BP_PUBLIC_IFACE or Config.PublicInterface")
+		return "", fmt.Errorf("could not determine default interface natively and ip command not found; set BP_PUBLIC_IFACE or Config.PublicInterface")
 	}
 	out, err := m.sys.Output(ctx, "ip", "-4", "route", "show", "default")
 	if err != nil {
 		return "", err
-	}
-	for _, field := range strings.Fields(out) {
-		// handled below with index scan
-		_ = field
 	}
 	fields := strings.Fields(out)
 	for i := 0; i < len(fields)-1; i++ {
@@ -512,6 +516,11 @@ func (m *Manager) detectServerIPv4(ctx context.Context) (string, error) {
 	if m.cfg.EndpointHost != "" {
 		return m.cfg.EndpointHost, nil
 	}
+
+	if localIP, err := m.detectOutboundIPv4(ctx); err == nil {
+		return localIP.String(), nil
+	}
+
 	iface, err := m.detectDefaultInterface(ctx)
 	if err != nil {
 		return "", err
@@ -538,6 +547,90 @@ func (m *Manager) detectServerIPv4(ctx context.Context) (string, error) {
 		}
 	}
 	return "", fmt.Errorf("could not detect ipv4 on interface %s", iface)
+}
+
+func (m *Manager) detectOutboundIPv4(ctx context.Context) (net.IP, error) {
+	dialCtx := ctx
+	if dialCtx == nil {
+		dialCtx = context.Background()
+	}
+
+	// UDP "connect" picks a route and local address without requiring a real handshake.
+	probes := []string{"1.1.1.1:53", "8.8.8.8:53"}
+	dialer := net.Dialer{Timeout: 2 * time.Second}
+
+	var lastErr error
+	for _, probe := range probes {
+		conn, err := dialer.DialContext(dialCtx, "udp4", probe)
+		if err != nil {
+			lastErr = err
+			continue
+		}
+
+		localAddr := conn.LocalAddr()
+		addr, ok := localAddr.(*net.UDPAddr)
+		_ = conn.Close()
+		if !ok || addr == nil || addr.IP == nil {
+			lastErr = fmt.Errorf("unexpected local address type %T", localAddr)
+			continue
+		}
+
+		ip := addr.IP.To4()
+		if ip == nil {
+			lastErr = fmt.Errorf("detected non-ipv4 local address %q", addr.IP.String())
+			continue
+		}
+		return ip, nil
+	}
+
+	if lastErr == nil {
+		lastErr = fmt.Errorf("no probe address succeeded")
+	}
+	return nil, lastErr
+}
+
+func (m *Manager) findInterfaceByIPv4(target net.IP) (string, error) {
+	target = target.To4()
+	if target == nil {
+		return "", fmt.Errorf("target is not an ipv4 address")
+	}
+
+	ifaces, err := net.Interfaces()
+	if err != nil {
+		return "", err
+	}
+
+	for _, iface := range ifaces {
+		if iface.Flags&net.FlagUp == 0 {
+			continue
+		}
+		addrs, err := iface.Addrs()
+		if err != nil {
+			continue
+		}
+		for _, addr := range addrs {
+			ip := ipv4FromAddr(addr)
+			if ip == nil {
+				continue
+			}
+			if ip.Equal(target) {
+				return iface.Name, nil
+			}
+		}
+	}
+
+	return "", fmt.Errorf("no interface found for local ipv4 %s", target.String())
+}
+
+func ipv4FromAddr(addr net.Addr) net.IP {
+	switch a := addr.(type) {
+	case *net.IPNet:
+		return a.IP.To4()
+	case *net.IPAddr:
+		return a.IP.To4()
+	default:
+		return nil
+	}
 }
 
 func (m *Manager) renderVPNConfig(vpnName, ifaceName, privateKey string, port, vpnOctet int, publicIface string) string {
