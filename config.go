@@ -3,6 +3,7 @@ package bypasser
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"strconv"
 )
 
@@ -27,10 +28,10 @@ type Config struct {
 
 func DefaultConfig() Config {
 	return Config{
-		WireGuardDir:    envOr("BP_WG_DIR", "/etc/wireguard"),
+		WireGuardDir:    envOr("BP_WG_DIR", defaultWireGuardDir()),
 		PeersSubdir:     "peers",
 		InterfacePrefix: "bp-",
-		SysctlFile:      envOr("SYSCTL_CONF_FILE", "/etc/sysctl.d/bypasser-forwarding.conf"),
+		SysctlFile:      envOr("SYSCTL_CONF_FILE", defaultSysctlFile()),
 		MinPort:         envInt("BP_WG_DEFAULT_MIN_PORT", 55107),
 		MaxPort:         envInt("BP_WG_DEFAULT_MAX_PORT", 55207),
 		SubnetPrefix:    "69.0",
@@ -118,4 +119,60 @@ func envInt(key string, fallback int) int {
 		return fallback
 	}
 	return n
+}
+
+func defaultWireGuardDir() string {
+	switch runtime.GOOS {
+	case "linux":
+		return "/etc/wireguard"
+	case "darwin":
+		for _, path := range darwinWireGuardCandidates(runtime.GOARCH) {
+			if dirExists(path) {
+				return path
+			}
+		}
+		candidates := darwinWireGuardCandidates(runtime.GOARCH)
+		if len(candidates) > 0 {
+			return candidates[0]
+		}
+		return "/usr/local/etc/wireguard"
+	case "windows":
+		programFiles := os.Getenv("ProgramFiles")
+		if programFiles == "" {
+			programFiles = `C:\Program Files`
+		}
+		return filepath.Join(programFiles, "WireGuard", "Data", "Configurations")
+	default:
+		cfgDir, err := os.UserConfigDir()
+		if err == nil && cfgDir != "" {
+			return filepath.Join(cfgDir, "wireguard")
+		}
+		return filepath.Join(".", "wireguard")
+	}
+}
+
+func defaultSysctlFile() string {
+	if runtime.GOOS != "linux" {
+		return ""
+	}
+	return "/etc/sysctl.d/bypasser-forwarding.conf"
+}
+
+func darwinWireGuardCandidates(goarch string) []string {
+	var out []string
+	if brewPrefix := os.Getenv("HOMEBREW_PREFIX"); brewPrefix != "" {
+		out = append(out, filepath.Join(brewPrefix, "etc", "wireguard"))
+	}
+	if goarch == "arm64" {
+		out = append(out, "/opt/homebrew/etc/wireguard", "/usr/local/etc/wireguard")
+	} else {
+		out = append(out, "/usr/local/etc/wireguard", "/opt/homebrew/etc/wireguard")
+	}
+	out = append(out, "/etc/wireguard")
+	return out
+}
+
+func dirExists(path string) bool {
+	info, err := os.Stat(path)
+	return err == nil && info.IsDir()
 }

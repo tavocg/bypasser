@@ -8,6 +8,7 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"runtime"
 	"sort"
 	"strconv"
 	"strings"
@@ -47,6 +48,11 @@ func (m *Manager) SetupServer(ctx context.Context) (Report, error) {
 	}
 	if err := m.ensureDir(m.cfg.PeersDir(), &rep); err != nil {
 		return rep, err
+	}
+
+	if m.cfg.SysctlFile == "" {
+		rep.warnf("skipping sysctl forwarding file setup on %s; set SYSCTL_CONF_FILE if you want to override", runtime.GOOS)
+		return rep, nil
 	}
 
 	sysctl := "net.ipv4.ip_forward = 1\nnet.ipv6.conf.all.forwarding = 1\n"

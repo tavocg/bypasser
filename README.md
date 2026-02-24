@@ -54,12 +54,44 @@ SYSCTL_CONF_FILE=./.bypasser-test/sysctl.conf \
 
 For VPN/peer creation you also need `wg` and `ip` installed on the machine.
 
+## Deploy / Update (Linux Server)
+
+Install dependencies (Debian/Ubuntu example):
+
+```bash
+sudo apt-get update
+sudo apt-get install -y wireguard-tools iproute2 iptables curl tar
+```
+
+Download/update the latest release binary to `/usr/local/bin/bp` (auto-detects `amd64` / `arm64`):
+
+```bash
+ARCH="$(uname -m)"
+case "$ARCH" in
+  x86_64) ASSET_ARCH="amd64" ;;
+  aarch64|arm64) ASSET_ARCH="arm64" ;;
+  *) echo "Unsupported architecture: $ARCH" >&2; exit 1 ;;
+esac
+
+ASSET="bp_linux_${ASSET_ARCH}"
+URL="https://github.com/tavocg/bypasser/releases/latest/download/${ASSET}.tar.gz"
+
+curl -fsSL "$URL" | sudo tar -xz -C /usr/local/bin --strip-components=1 "${ASSET}/bp"
+sudo chmod 0755 /usr/local/bin/bp
+```
+
+First-time server setup (creates WireGuard directories and forwarding sysctl file):
+
+```bash
+sudo bp -server
+```
+
 ## Environment Overrides
 
 | Variable | Default | Purpose |
 | --- | --- | --- |
-| `BP_WG_DIR` | `/etc/wireguard` | Base directory for generated WireGuard configs |
-| `SYSCTL_CONF_FILE` | `/etc/sysctl.d/bypasser-forwarding.conf` | Forwarding sysctl file written by `bp -server` |
+| `BP_WG_DIR` | OS-specific (`/etc/wireguard` on Linux, Homebrew `etc/wireguard` on macOS, `C:\Program Files\WireGuard\Data\Configurations` on Windows) | Base directory for generated WireGuard configs |
+| `SYSCTL_CONF_FILE` | Linux only: `/etc/sysctl.d/bypasser-forwarding.conf` | Forwarding sysctl file written by `bp -server` |
 | `BP_WG_DEFAULT_MIN_PORT` | `55107` | Minimum listen port when auto-assigning new VPN ports |
 | `BP_WG_DEFAULT_MAX_PORT` | `55207` | Maximum listen port when auto-assigning new VPN ports |
 | `BP_PUBLIC_IFACE` | auto-detected | Public server interface used in iptables `PostUp`/`PostDown` |
@@ -85,4 +117,4 @@ func main() {
 ## Notes
 
 - The generated files follow the conventions from the original shell prototype in this repository.
-- `-server` prepares server base files (directories + sysctl forwarding config); it does not create a VPN interface by itself.
+- `-server` prepares server base files (directories + sysctl forwarding config on Linux); it does not create a VPN interface by itself.
