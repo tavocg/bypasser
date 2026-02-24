@@ -66,11 +66,13 @@ jobs:
           else
             tar -C stage -czf "${DIST_DIR}/${NAME}.tar.gz" "${NAME}"
 
-            # Compatibility aliases for raw `uname -m` values used by shell one-liners.
-            case "${GOARCH}" in
-              amd64) cp "${DIST_DIR}/${NAME}.tar.gz" "${DIST_DIR}/bp_${GOOS}_x86_64.tar.gz" ;;
-              arm64) cp "${DIST_DIR}/${NAME}.tar.gz" "${DIST_DIR}/bp_${GOOS}_aarch64.tar.gz" ;;
-            esac
+            # Compatibility aliases for raw Linux `uname -m` values used by shell one-liners.
+            if [ "${GOOS}" = "linux" ]; then
+              case "${GOARCH}" in
+                amd64) cp "${DIST_DIR}/${NAME}.tar.gz" "${DIST_DIR}/bp_${GOOS}_x86_64.tar.gz" ;;
+                arm64) cp "${DIST_DIR}/${NAME}.tar.gz" "${DIST_DIR}/bp_${GOOS}_aarch64.tar.gz" ;;
+              esac
+            fi
           fi
 
       - name: Upload artifacts
