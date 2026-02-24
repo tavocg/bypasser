@@ -45,7 +45,15 @@ jobs:
 
           GOOS="${{ matrix.goos }}"
           GOARCH="${{ matrix.goarch }}"
-          NAME="bp_${GOOS}_${GOARCH}"
+          RELEASE_ARCH="${GOARCH}"
+          if [ "${GOOS}" = "linux" ]; then
+            case "${GOARCH}" in
+              amd64) RELEASE_ARCH="x86_64" ;;
+              arm64) RELEASE_ARCH="aarch64" ;;
+            esac
+          fi
+
+          NAME="bp_${GOOS}_${RELEASE_ARCH}"
           STAGE_DIR="stage/${NAME}"
           DIST_DIR="dist"
 
@@ -65,13 +73,6 @@ jobs:
             (cd stage && zip -qr "../${DIST_DIR}/${NAME}.zip" "${NAME}")
           else
             tar -C stage -czf "${DIST_DIR}/${NAME}.tar.gz" "${NAME}"
-
-            if [ "${GOOS}" = "linux" ]; then
-              case "${GOARCH}" in
-                amd64) cp "${DIST_DIR}/${NAME}.tar.gz" "${DIST_DIR}/bp_${GOOS}_x86_64.tar.gz" ;;
-                arm64) cp "${DIST_DIR}/${NAME}.tar.gz" "${DIST_DIR}/bp_${GOOS}_aarch64.tar.gz" ;;
-              esac
-            fi
           fi
 
       - name: Upload artifacts
