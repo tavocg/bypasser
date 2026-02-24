@@ -47,12 +47,23 @@ bp -d
 ## Safe Local Testing (no `/etc` writes)
 
 ```bash
-BP_WG_DIR=/tmp/bypasser-test/wg \
-SYSCTL_CONF_FILE=/tmp/bypasser-test/sysctl.conf \
+BP_WG_DIR=./.bypasser-test/wg \
+SYSCTL_CONF_FILE=./.bypasser-test/sysctl.conf \
 ./bp -server
 ```
 
 For VPN/peer creation you also need `wg` and `ip` installed on the machine.
+
+## Environment Overrides
+
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `BP_WG_DIR` | `/etc/wireguard` | Base directory for generated WireGuard configs |
+| `SYSCTL_CONF_FILE` | `/etc/sysctl.d/bypasser-forwarding.conf` | Forwarding sysctl file written by `bp -server` |
+| `BP_WG_DEFAULT_MIN_PORT` | `55107` | Minimum listen port when auto-assigning new VPN ports |
+| `BP_WG_DEFAULT_MAX_PORT` | `55207` | Maximum listen port when auto-assigning new VPN ports |
+| `BP_PUBLIC_IFACE` | auto-detected | Public server interface used in iptables `PostUp`/`PostDown` |
+| `BP_ENDPOINT_HOST` | auto-detected | Endpoint host/IP written to generated peer configs |
 
 ## Import as a Package
 
