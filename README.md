@@ -63,17 +63,12 @@ sudo apt-get update
 sudo apt-get install -y wireguard-tools iproute2 iptables curl tar
 ```
 
-Download/update the latest release binary to `/usr/local/bin/bp` (auto-detects `amd64` / `arm64`):
+Download/update the latest release binary to `/usr/local/bin/bp`:
 
 ```bash
+OS="$(uname -s)"
 ARCH="$(uname -m)"
-case "$ARCH" in
-  x86_64) ASSET_ARCH="amd64" ;;
-  aarch64|arm64) ASSET_ARCH="arm64" ;;
-  *) echo "Unsupported architecture: $ARCH" >&2; exit 1 ;;
-esac
-
-ASSET="bp_linux_${ASSET_ARCH}"
+ASSET="bp_${OS,,}_${ARCH}"
 URL="https://github.com/tavocg/bypasser/releases/latest/download/${ASSET}.tar.gz"
 
 curl -fsSL "$URL" | sudo tar -xz -C /usr/local/bin --strip-components=1 "${ASSET}/bp"
